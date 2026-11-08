@@ -13,11 +13,11 @@ O GP Programinha usa o formato JSON `.gp-project.json` para exportar, importar e
   "files": [
     {
       "path": "app/principal.gp",
-      "source": "usar \"lib/matematica.gp\" como math\\nmostrar(math.somar(20, 22))"
+      "source": "usar \"lib/matematica.gp\" como math\nmostrar(math.somar(20, 22))"
     },
     {
       "path": "app/lib/matematica.gp",
-      "source": "funcao somar(numero a, numero b) -> numero {\\n    retornar a + b\\n}"
+      "source": "funcao somar(numero a, numero b) -> numero {\n    retornar a + b\n}"
     }
   ]
 }
