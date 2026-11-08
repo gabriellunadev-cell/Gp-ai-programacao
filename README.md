@@ -16,14 +16,14 @@ O Programinha não contém uma cópia do compilador.
 - Projetos GP com múltiplos arquivos e caminhos relativos.
 - Explorador para criar, selecionar e excluir arquivos.
 - Definição do arquivo principal do projeto.
-- Salvamento automático local no navegador/dispositivo.
+- Salvamento automático local no IndexedDB, com migração dos projetos salvos no localStorage legado e fallback quando IndexedDB não está disponível.
 - Importação e exportação do formato .gp-project.json.
 - Download individual de arquivos .gp.
 - Compilação e execução do projeto completo por meio dos endpoints de projeto da GP Bridge 0.2.
 - Atalhos Ctrl+Enter para executar e Ctrl+S para exportar o projeto.
 - Validação de caminhos e limites do projeto no cliente; o Bridge realiza a validação de segurança definitiva.
 
-O armazenamento local é deste navegador/dispositivo. Exporte o projeto para manter uma cópia independente ou transferi-lo para outro dispositivo.
+O armazenamento local é deste navegador/dispositivo. Exporte o projeto para manter uma cópia independente ou transferi-lo para outro dispositivo. A IDE valida os 16 MiB de fontes do projeto; a disponibilidade efetiva de espaço continua sujeita às quotas de armazenamento do navegador.
 
 ## Desenvolvimento
 
