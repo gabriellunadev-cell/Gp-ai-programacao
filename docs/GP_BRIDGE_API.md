@@ -42,11 +42,11 @@ POST /api/compile-project e POST /api/run-project recebem:
   "files": [
     {
       "path": "app/principal.gp",
-      "source": "usar \"lib/matematica.gp\" como math\\nmostrar(math.somar(19, 23))"
+      "source": "usar \"lib/matematica.gp\" como math\nmostrar(math.somar(19, 23))"
     },
     {
       "path": "app/lib/matematica.gp",
-      "source": "funcao somar(numero a, numero b) -> numero {\\n    retornar a + b\\n}"
+      "source": "funcao somar(numero a, numero b) -> numero {\n    retornar a + b\n}"
     }
   ]
 }
