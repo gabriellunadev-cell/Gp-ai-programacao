@@ -58,13 +58,13 @@ mostrar("Idade:", pessoa.idade)
 `,
   },
   {
-    name: "modulos.gp",
+    name: "colecoes.gp",
     label: "Funções e coleções",
     source: `funcao dobrar(numero valor) -> numero {
     retornar valor * 2
 }
 
-lista<numero> valores = [2, 4, 6, 8]
+lista numero valores = [2, 4, 6, 8]
 para (numero i = 0; i < tamanho(valores); i = i + 1) {
     mostrar(dobrar(valores[i]))
 }
