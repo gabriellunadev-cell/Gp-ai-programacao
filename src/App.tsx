@@ -208,7 +208,11 @@ async function readSavedProject(): Promise<GPProject> {
 async function persistProject(project: GPProject): Promise<string> {
   try {
     await writeProjectToIndexedDB(project);
-    localStorage.removeItem(PROJECT_STORAGE_KEY);
+    try {
+      localStorage.removeItem(PROJECT_STORAGE_KEY);
+    } catch {
+      // A stale legacy copy is harmless once the IndexedDB write is committed.
+    }
     return "IndexedDB";
   } catch (indexedError) {
     try {
@@ -541,10 +545,10 @@ export default function App() {
             <div className="sidebar-heading"><span>PROJETO</span><button className="subtle-button" title="Fechar explorador" onClick={() => setSidebarOpen(false)}><PanelLeftClose size={15} /></button></div>
             <div className="project-root"><ChevronDown size={14} /><FolderOpen size={15} /> {project.name.toUpperCase()}</div>
             <div className="project-actions">
-              <button className="subtle-button" title="Novo arquivo" onClick={createFile}><FilePlus2 size={15} /></button>
-              <button className="subtle-button" title="Novo projeto" onClick={newProject}><FolderPlus size={15} /></button>
-              <button className="subtle-button" title="Importar projeto" onClick={() => importInput.current?.click()}><Upload size={15} /></button>
-              <button className="subtle-button" title="Exportar projeto" onClick={exportProject}><FileDown size={15} /></button>
+              <button className="subtle-button" title="Novo arquivo" disabled={!storageReady} onClick={createFile}><FilePlus2 size={15} /></button>
+              <button className="subtle-button" title="Novo projeto" disabled={!storageReady} onClick={newProject}><FolderPlus size={15} /></button>
+              <button className="subtle-button" title="Importar projeto" disabled={!storageReady} onClick={() => importInput.current?.click()}><Upload size={15} /></button>
+              <button className="subtle-button" title="Exportar projeto" disabled={!storageReady} onClick={exportProject}><FileDown size={15} /></button>
             </div>
             <input
               ref={importInput}
@@ -556,14 +560,14 @@ export default function App() {
             <div className="file-list">
               {project.files.map((file) => (
                 <div key={file.path} className={"file-row-wrap " + (activePath === file.path ? "selected" : "")}>
-                  <button className="file-row" onClick={() => { setActivePath(file.path); setActiveTab("editor"); }}>
+                  <button className="file-row" disabled={!storageReady} onClick={() => { setActivePath(file.path); setActiveTab("editor"); }}>
                     <FileCode2 size={15} className="file-icon" />
                     <span title={file.path}>{file.path}</span>
                     {project.entryFile === file.path && <Star size={12} className="entry-star" fill="currentColor" />}
                   </button>
                   <div className="file-row-tools">
-                    {project.entryFile !== file.path && <button className="tiny-icon-button" title="Definir como arquivo principal" onClick={() => setEntryFile(file.path)}><Star size={12} /></button>}
-                    <button className="tiny-icon-button danger" title="Excluir arquivo" onClick={() => deleteFile(file.path)}><Trash2 size={12} /></button>
+                    {project.entryFile !== file.path && <button className="tiny-icon-button" disabled={!storageReady} title="Definir como arquivo principal" onClick={() => setEntryFile(file.path)}><Star size={12} /></button>}
+                    <button className="tiny-icon-button danger" disabled={!storageReady} title="Excluir arquivo" onClick={() => deleteFile(file.path)}><Trash2 size={12} /></button>
                   </div>
                 </div>
               ))}
