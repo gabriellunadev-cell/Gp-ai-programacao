@@ -1,22 +1,29 @@
 # GP Programinha
 
-Ambiente de desenvolvimento visual da linguagem **Gabriel Programming (GP)**, pensado primeiro para Android e navegador, sem acoplar o editor ao compilador.
-
-## Objetivo
-
-Oferecer um ambiente simples e extensível para criar, editar, compilar e executar projetos GP. O aplicativo é um cliente do GP Bridge; a implementação da linguagem, compilador, runtime e biblioteca padrão permanece no repositório [Linguagem-GP-](https://github.com/gabriellunadev-cell/Linguagem-GP-).
+IDE visual e ambiente de projetos da linguagem Gabriel Programming (GP), desenvolvido em React, TypeScript e Vite, com prioridade para Android e navegador.
 
 ## Arquitetura
 
-- **Interface:** React + TypeScript + Vite, responsiva e instalável como PWA em evolução.
-- **Editor:** editor de código isolado da camada de execução.
-- **GP Client:** cliente HTTP tipado para conversar com o serviço local da linguagem.
-- **GP Bridge:** serviço local executado junto à instalação da GP. A API está especificada em `docs/GP_BRIDGE_API.md`.
-- **Separação:** este repositório não copia nem mantém uma segunda implementação do compilador.
+- GP Programinha: editor, explorador de arquivos, gestão local de projetos e interface de execução.
+- GP Client: cliente HTTP tipado para conversar com o Bridge.
+- GP Bridge: serviço local que pertence ao repositório da linguagem e invoca o compilador oficial.
+- Linguagem GP: lexer, parser, compilador, runtime e biblioteca padrão continuam exclusivamente no repositório Linguagem-GP-.
 
-## Estado inicial
+O Programinha não contém uma cópia do compilador.
 
-O repositório começa com um shell funcional de IDE: explorador de arquivos de exemplo, editor, ações de compilar/executar, painel de saída, verificação de conexão e download do arquivo atual. As ações de compilação e execução dependem do GP Bridge no endereço local configurado. O aplicativo informa claramente quando o serviço não está disponível; não simula uma compilação bem-sucedida.
+## Recursos do ciclo 0.2
+
+- Projetos GP com múltiplos arquivos e caminhos relativos.
+- Explorador para criar, selecionar e excluir arquivos.
+- Definição do arquivo principal do projeto.
+- Salvamento automático local no IndexedDB, com migração dos projetos salvos no localStorage legado e fallback quando IndexedDB não está disponível.
+- Importação e exportação do formato .gp-project.json.
+- Download individual de arquivos .gp.
+- Compilação e execução do projeto completo por meio dos endpoints de projeto da GP Bridge 0.2.
+- Atalhos Ctrl+Enter para executar e Ctrl+S para exportar o projeto.
+- Validação de caminhos e limites do projeto no cliente; o Bridge realiza a validação de segurança definitiva.
+
+O armazenamento local é deste navegador/dispositivo. Exporte o projeto para manter uma cópia independente ou transferi-lo para outro dispositivo. A IDE valida os 16 MiB de fontes do projeto; a disponibilidade efetiva de espaço continua sujeita às quotas de armazenamento do navegador.
 
 ## Desenvolvimento
 
@@ -34,19 +41,23 @@ npm run typecheck
 npm run build
 ```
 
-## Integração com a linguagem
+Formato de projeto e regras de importação: [GP Project Format v1](docs/GP_PROJECT_FORMAT.md).
 
-Consulte [GP Bridge API](docs/GP_BRIDGE_API.md). O endpoint padrão é `http://127.0.0.1:8765`. O serviço deve escutar somente em loopback, limitar o tamanho das fontes e executar o compilador em diretório temporário isolado.
+## GP Bridge
 
-## Direção de evolução
+O endereço padrão é http://127.0.0.1:8765. Execute python3 gp_ide_server.py na raiz do repositório da linguagem GP. A interface requer projectApi: true no health check, disponível na Bridge 0.2.
 
-1. Concluir e testar o GP Bridge no repositório da linguagem.
-2. Substituir a área de texto pelo editor com realce da sintaxe GP.
-3. Implementar abertura/salvamento de projetos e múltiplos arquivos.
-4. Integrar diagnósticos, navegação de símbolos e biblioteca padrão.
-5. Adicionar assistente de programação opcional sem torná-lo requisito para compilar GP.
+Veja o contrato completo em docs/GP_BRIDGE_API.md e a implementação em gp_ide_server.py no repositório da linguagem.
 
-## Repositórios relacionados
+## Próximas etapas
+
+1. Validar execução real da Bridge 0.2 no Termux/Android e adicionar CI automatizado.
+2. Adicionar editor com realce de sintaxe GP e diagnósticos por linha/coluna.
+3. Adicionar abas, navegação de símbolos, busca no projeto e formatação.
+4. Evoluir gestão de projetos para múltiplos projetos e armazenamento robusto.
+5. Integrar assistente de programação opcional sem torná-lo requisito para compilar GP.
+
+## Repositórios
 
 - Linguagem, compilador, runtime e biblioteca: https://github.com/gabriellunadev-cell/Linguagem-GP-
-- Aplicativo GP Programinha: https://github.com/gabriellunadev-cell/Gp-ai-programacao
+- IDE GP Programinha: https://github.com/gabriellunadev-cell/Gp-ai-programacao
