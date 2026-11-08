@@ -112,14 +112,116 @@ function validateProject(value: unknown): value is GPProject {
   return paths.has(candidate.entryFile);
 }
 
-function readSavedProject(): GPProject {
+const PROJECT_DATABASE_NAME = "gp-programinha";
+const PROJECT_DATABASE_VERSION = 1;
+const PROJECT_OBJECT_STORE = "projects";
+
+function openProjectDatabase(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (!("indexedDB" in window)) {
+      reject(new Error("IndexedDB não está disponível neste navegador."));
+      return;
+    }
+    const request = window.indexedDB.open(
+      PROJECT_DATABASE_NAME,
+      PROJECT_DATABASE_VERSION,
+    );
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      if (!database.objectStoreNames.contains(PROJECT_OBJECT_STORE)) {
+        database.createObjectStore(PROJECT_OBJECT_STORE);
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () =>
+      reject(request.error ?? new Error("Falha ao abrir o banco de projetos."));
+    request.onblocked = () =>
+      reject(new Error("O banco de projetos está bloqueado por outra aba."));
+  });
+}
+
+async function readProjectFromIndexedDB(): Promise<unknown> {
+  const database = await openProjectDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(PROJECT_OBJECT_STORE, "readonly");
+    const request = transaction.objectStore(PROJECT_OBJECT_STORE).get("active");
+    request.onsuccess = () => {
+      database.close();
+      resolve(request.result);
+    };
+    request.onerror = () => {
+      database.close();
+      reject(request.error ?? new Error("Falha ao ler o projeto local."));
+    };
+    transaction.onabort = () => {
+      database.close();
+      reject(transaction.error ?? new Error("Leitura do projeto foi cancelada."));
+    };
+  });
+}
+
+async function writeProjectToIndexedDB(project: GPProject): Promise<void> {
+  const database = await openProjectDatabase();
+  return new Promise((resolve, reject) => {
+    const transaction = database.transaction(PROJECT_OBJECT_STORE, "readwrite");
+    transaction.objectStore(PROJECT_OBJECT_STORE).put(project, "active");
+    transaction.oncomplete = () => {
+      database.close();
+      resolve();
+    };
+    transaction.onerror = () => {
+      database.close();
+      reject(transaction.error ?? new Error("Falha ao salvar o projeto local."));
+    };
+    transaction.onabort = () => {
+      database.close();
+      reject(transaction.error ?? new Error("Salvamento do projeto foi cancelado."));
+    };
+  });
+}
+
+async function readSavedProject(): Promise<GPProject> {
+  try {
+    const stored: unknown = await readProjectFromIndexedDB();
+    if (validateProject(stored)) return stored;
+  } catch {
+    // Continue with the v0.2 localStorage migration/fallback.
+  }
+
   try {
     const raw = localStorage.getItem(PROJECT_STORAGE_KEY);
-    if (!raw) return starterProject;
-    const value: unknown = JSON.parse(raw);
-    return validateProject(value) ? value : starterProject;
+    if (raw) {
+      const legacy: unknown = JSON.parse(raw);
+      if (validateProject(legacy)) {
+        void writeProjectToIndexedDB(legacy)
+          .then(() => localStorage.removeItem(PROJECT_STORAGE_KEY))
+          .catch(() => undefined);
+        return legacy;
+      }
+    }
   } catch {
-    return starterProject;
+    // A clean starter project remains available when browser storage is unavailable.
+  }
+  return starterProject;
+}
+
+async function persistProject(project: GPProject): Promise<string> {
+  try {
+    await writeProjectToIndexedDB(project);
+    localStorage.removeItem(PROJECT_STORAGE_KEY);
+    return "IndexedDB";
+  } catch (indexedError) {
+    try {
+      localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
+      return "armazenamento local alternativo";
+    } catch {
+      const detail =
+        indexedError instanceof Error ? " " + indexedError.message : "";
+      throw new Error(
+        "Não foi possível salvar automaticamente." + detail +
+          " Exporte o projeto para preservar suas alterações.",
+      );
+    }
   }
 }
 
@@ -134,8 +236,9 @@ function downloadText(fileName: string, content: string, mime: string): void {
 }
 
 export default function App() {
-  const [project, setProject] = useState<GPProject>(readSavedProject);
-  const [activePath, setActivePath] = useState(project.entryFile);
+  const [project, setProject] = useState<GPProject>(starterProject);
+  const [activePath, setActivePath] = useState(starterProject.entryFile);
+  const [storageReady, setStorageReady] = useState(false);
   const [bridgeUrl, setBridgeUrl] = useState(
     () => localStorage.getItem("gp-bridge-url") ?? DEFAULT_BRIDGE,
   );
@@ -157,18 +260,38 @@ export default function App() {
   const lineCount = useMemo(() => Math.max(1, source.split("\n").length), [source]);
 
   useEffect(() => {
+    let cancelled = false;
+    void readSavedProject().then((savedProject) => {
+      if (cancelled) return;
+      setProject(savedProject);
+      setActivePath(savedProject.entryFile);
+      setStorageReady(true);
+      setLastAction("Projeto recuperado do armazenamento local");
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
     const timer = window.setTimeout(() => {
-      try {
-        localStorage.setItem(PROJECT_STORAGE_KEY, JSON.stringify(project));
-        setLastAction("Projeto salvo neste dispositivo");
-      } catch {
-        setOutput("Não foi possível salvar automaticamente. Exporte o projeto para não perder as alterações.");
-        setOutputKind("error");
-        setActiveTab("output");
-      }
+      void persistProject(project)
+        .then((storageName) => {
+          setLastAction("Projeto salvo localmente · " + storageName);
+        })
+        .catch((error: unknown) => {
+          setOutput(
+            error instanceof Error
+              ? error.message
+              : "Não foi possível salvar o projeto automaticamente. Exporte uma cópia.",
+          );
+          setOutputKind("error");
+          setActiveTab("output");
+        });
     }, 350);
     return () => window.clearTimeout(timer);
-  }, [project]);
+  }, [project, storageReady]);
 
   async function refreshConnection(): Promise<void> {
     setConnection("checking");
@@ -462,10 +585,10 @@ export default function App() {
               <button className={activeTab === "output" ? "tab active" : "tab"} onClick={() => setActiveTab("output")}><TerminalSquare size={14} /> Saída</button>
             </div>
             <div className="editor-actions">
-              <button className="secondary-button" onClick={downloadCurrentFile}><Download size={15} /> Arquivo</button>
-              <button className="secondary-button" onClick={exportProject}><FileDown size={15} /> Exportar projeto</button>
-              <button className="secondary-button" disabled={busy || connection !== "connected"} onClick={() => void execute("compile")}><Hammer size={15} /> Compilar</button>
-              <button className="primary-button" disabled={busy || connection !== "connected"} onClick={() => void execute("run")}><CirclePlay size={16} /> {busy ? "Processando..." : "Executar"}</button>
+              <button className="secondary-button" disabled={!storageReady} onClick={downloadCurrentFile}><Download size={15} /> Arquivo</button>
+              <button className="secondary-button" disabled={!storageReady} onClick={exportProject}><FileDown size={15} /> Exportar projeto</button>
+              <button className="secondary-button" disabled={!storageReady || busy || connection !== "connected"} onClick={() => void execute("compile")}><Hammer size={15} /> Compilar</button>
+              <button className="primary-button" disabled={!storageReady || busy || connection !== "connected"} onClick={() => void execute("run")}><CirclePlay size={16} /> {busy ? "Processando..." : "Executar"}</button>
             </div>
           </div>
 
@@ -487,12 +610,13 @@ export default function App() {
                   autoCapitalize="off"
                   autoCorrect="off"
                   spellCheck={false}
+                  disabled={!storageReady}
                   value={source}
                   onChange={(event) => updateActiveSource(event.target.value)}
                   onKeyDown={handleEditorKeyDown}
                 />
               </div>
-              <div className="editor-footer"><span><span className="footer-dot" /> {lineCount} linhas · {project.files.length} arquivos</span><span>Português · GP</span></div>
+              <div className="editor-footer"><span><span className="footer-dot" /> {storageReady ? lineCount + " linhas · " + project.files.length + " arquivos" : "Carregando projeto local..."}</span><span>Português · GP</span></div>
             </div>
           ) : (
             <section className="output-panel">
