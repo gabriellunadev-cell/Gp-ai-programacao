@@ -25,7 +25,7 @@ import {
   type BridgeResult,
 } from "./gpClient";
 
-const DEFAULT_BRIDGE = "http://127.0.0.1:8765";
+const DEFAULT_BRIDGE = import.meta.env.VITE_GP_BRIDGE_URL || "http://127.0.0.1:8765";
 
 const examples = [
   {

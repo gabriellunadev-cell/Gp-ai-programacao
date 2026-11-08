@@ -16,7 +16,7 @@ jobs:
           node-version: 20
           cache: npm
       - name: Install dependencies
-        run: npm install
+        run: npm ci
       - name: Typecheck and build
         run: |
           npm run typecheck
