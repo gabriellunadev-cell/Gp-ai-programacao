@@ -41,6 +41,8 @@ npm run typecheck
 npm run build
 ```
 
+Formato de projeto e regras de importação: [GP Project Format v1](docs/GP_PROJECT_FORMAT.md).
+
 ## GP Bridge
 
 O endereço padrão é http://127.0.0.1:8765. Execute python3 gp_ide_server.py na raiz do repositório da linguagem GP. A interface requer projectApi: true no health check, disponível na Bridge 0.2.
