@@ -1,91 +1,73 @@
 # Contrato HTTP — GP Bridge
 
-O GP Programinha é somente um cliente. O serviço que invoca o compilador pertence ao repositório da linguagem GP.
+O GP Programinha é um cliente independente. A implementação do compilador, runtime e biblioteca pertence ao repositório da linguagem GP.
 
-## Endereço padrão
+## Endereço e segurança
 
-`http://127.0.0.1:8765`
-
-O servidor deve escutar exclusivamente em loopback (`127.0.0.1` ou `::1`). Não deve ser exposto na rede local nem na internet por padrão.
-
-## Segurança obrigatória
-
-- Aceitar conexões apenas de loopback.
-- Aplicar allowlist de origem CORS ao endereço de desenvolvimento do Programinha e à origem de produção configurada.
-- Limitar o corpo JSON a 1 MiB nesta primeira versão.
-- Validar `fileName` como nome simples; nunca aceitar caminho arbitrário enviado pelo navegador.
-- Criar diretório temporário isolado por requisição e removê-lo ao concluir.
-- Invocar o compilador com lista de argumentos, sem shell e sem interpolação de comandos.
-- Aplicar timeout de compilação/execução e devolver código de saída.
-- Não disponibilizar leitura arbitrária de arquivos, shell remoto, variáveis de ambiente ou credenciais.
-- Não habilitar endpoints de administração.
+- Endereço padrão: http://127.0.0.1:8765
+- O servidor deve escutar exclusivamente em loopback.
+- O Bridge valida Host e CORS, usa lista de argumentos sem shell e executa em workspace temporário.
+- Não deve ser publicado na rede local ou na internet.
+- Não existem endpoints de shell, leitura arbitrária de arquivos, administração ou acesso a credenciais.
 
 ## GET /api/health
 
-Resposta:
+A resposta identifica as versões e os recursos:
 
 ```json
 {
   "ok": true,
   "service": "gp-bridge",
-  "version": "0.8.x",
-  "compilerAvailable": true
+  "version": "0.8.52",
+  "bridgeVersion": "0.2",
+  "compilerAvailable": true,
+  "projectApi": true,
+  "limits": { "files": 128, "fileBytes": 4194304, "projectBytes": 16777216 }
 }
 ```
 
-## POST /api/compile
+## API de arquivo único
 
-Corpo:
+POST /api/compile e POST /api/run recebem um objeto com fileName e source; /api/run também aceita runtime com o valor reference.
+
+A API de arquivo único aceita somente fontes sem imports. Fontes que usam módulos devem ser enviadas à API de projeto para que o Bridge receba e valide todo o grafo.
+
+## API de projeto
+
+POST /api/compile-project e POST /api/run-project recebem:
 
 ```json
 {
-  "fileName": "principal.gp",
-  "source": "mostrar(\"Olá GP\")"
+  "entryFile": "app/principal.gp",
+  "files": [
+    {
+      "path": "app/principal.gp",
+      "source": "usar \"lib/matematica.gp\" como math\\nmostrar(math.somar(19, 23))"
+    },
+    {
+      "path": "app/lib/matematica.gp",
+      "source": "funcao somar(numero a, numero b) -> numero {\\n    retornar a + b\\n}"
+    }
+  ]
 }
 ```
 
-Resposta:
+entryFile identifica o arquivo de entrada. Cada item de files contém um caminho relativo e sua fonte GP. Imports são resolvidos em relação ao arquivo que os declara, seguindo as regras do compilador GP.
 
-```json
-{
-  "ok": true,
-  "stdout": "",
-  "stderr": "",
-  "exitCode": 0,
-  "durationMs": 18,
-  "diagnostics": []
-}
-```
+O Bridge rejeita caminhos absolutos, caminhos enviados com segmentos vazios, ponto ou ponto-ponto, caminhos fora do workspace, imports absolutos, barras invertidas, módulos ausentes e imports que escapem da raiz do projeto. A validação também percorre os imports dos módulos alcançáveis a partir do arquivo principal.
 
-A compilação deve usar o frontend/CLI oficial do repositório da linguagem e gerar artefatos apenas dentro do diretório temporário. A primeira implementação pode usar o backend de referência; o tipo de backend deve ser explícito.
+## Limites operacionais
 
-## POST /api/run
+- Corpo HTTP: 20 MiB.
+- Arquivos por projeto: 1 a 128.
+- Fonte por arquivo: 4 MiB.
+- Fontes somadas: 16 MiB.
+- Timeout de compilação: 30 segundos.
+- Timeout de execução: 10 segundos.
+- Limite da VM de referência: 1.000.000 de instruções.
 
-Corpo:
+## Resposta
 
-```json
-{
-  "fileName": "principal.gp",
-  "source": "mostrar(\"Olá GP\")",
-  "runtime": "reference"
-}
-```
+As operações retornam ok, stdout, stderr, exitCode e durationMs. Erros de entrada usam HTTP 400; limites excedidos usam HTTP 413; erros internos não expõem stack trace, caminhos absolutos ou segredos.
 
-Resposta tem o mesmo formato de `/api/compile`, com stdout/stderr da execução e código de saída real.
-
-## Erros
-
-Usar HTTP 400 para entrada inválida, 413 para corpo acima do limite, 408 para timeout e 500 para falha interna. Respostas de erro devem seguir:
-
-```json
-{
-  "ok": false,
-  "error": "Descrição segura e útil do erro"
-}
-```
-
-Nunca retornar stack trace, caminho absoluto interno ou segredos ao navegador.
-
-## Compatibilidade
-
-O contrato é versionado junto ao Programinha. Mudanças incompatíveis devem introduzir `/api/v2` ou um campo de versão negociada no health check. O cliente não deve alegar compilação/execução bem-sucedida quando o Bridge estiver indisponível.
+A Bridge 0.2 não altera a linguagem, que permanece GP 0.8.52. A execução usa a VM Python de referência. Runtime nativo, depuração interativa e serviços de pacotes não fazem parte deste contrato.
