@@ -5,6 +5,12 @@ export type BridgeHealth = {
   bridgeVersion?: string;
   compilerAvailable?: boolean;
   projectApi?: boolean;
+  pythonInterop?: {
+    available: boolean;
+    defaultEnabled: boolean;
+    allowlist: string[];
+    maxCallsPerRun: number;
+  };
   limits?: {
     files?: number;
     fileBytes?: number;
@@ -91,10 +97,11 @@ export function runGpSource(
   baseUrl: string,
   source: string,
   fileName: string,
+  pythonInterop = false,
 ): Promise<BridgeResult> {
   return request<BridgeResult>(baseUrl, "/api/run", {
     method: "POST",
-    body: JSON.stringify({ source, fileName, runtime: "reference" }),
+    body: JSON.stringify({ source, fileName, runtime: "reference", pythonInterop }),
   });
 }
 
@@ -150,10 +157,11 @@ export function runGpProject(
   baseUrl: string,
   entryFile: string,
   files: GpProjectFile[],
+  pythonInterop = false,
 ): Promise<BridgeResult> {
   assertProjectLimits(entryFile, files);
   return request<BridgeResult>(baseUrl, "/api/run-project", {
     method: "POST",
-    body: JSON.stringify({ entryFile, files }),
+    body: JSON.stringify({ entryFile, files, pythonInterop }),
   });
 }

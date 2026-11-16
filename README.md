@@ -61,3 +61,7 @@ Veja o contrato completo em docs/GP_BRIDGE_API.md e a implementação em gp_ide_
 
 - Linguagem, compilador, runtime e biblioteca: https://github.com/gabriellunadev-cell/Linguagem-GP-
 - IDE GP Programinha: https://github.com/gabriellunadev-cell/Gp-ai-programacao
+
+## Execução híbrida
+
+O Programinha pode habilitar a execução híbrida Python + GP em Configurações. A opção é desligada por padrão e utiliza uma allowlist de funções da biblioteca padrão. Consulte docs/GP_BRIDGE_API.md para o contrato HTTP e os limites.

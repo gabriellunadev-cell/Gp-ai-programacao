@@ -71,3 +71,18 @@ O Bridge rejeita caminhos absolutos, caminhos enviados com segmentos vazios, pon
 As operações retornam ok, stdout, stderr, exitCode e durationMs. Erros de entrada usam HTTP 400; limites excedidos usam HTTP 413; erros internos não expõem stack trace, caminhos absolutos ou segredos.
 
 A Bridge 0.2 não altera a linguagem, que permanece GP 0.8.52. A execução usa a VM Python de referência. Runtime nativo, depuração interativa e serviços de pacotes não fazem parte deste contrato.
+
+## Execução híbrida opcional Python + GP
+
+Os endpoints de execução aceitam o campo booleano opcional pythonInterop:
+
+- POST /api/run: { "source": "...", "fileName": "principal.gp", "pythonInterop": true }
+- POST /api/run-project: { "entryFile": "app/principal.gp", "files": [...], "pythonInterop": true }
+
+O padrão é false. Quando ativado, a VM de referência disponibiliza somente as funções enumeradas pelo campo pythonInterop.allowlist em /api/health. A resposta de saúde informa defaultEnabled: false e maxCallsPerRun.
+
+A integração usa uma allowlist fixa de funções da biblioteca padrão Python: math, statistics, hashlib, unicodedata e textwrap. Não existe importação dinâmica, eval/exec, shell, subprocessos, leitura arbitrária de arquivos ou rede por essa interface.
+
+O Programinha oferece um controle em Configurações da conexão com a GP. A preferência fica local neste navegador; cada execução transmite o valor explicitamente. A opção deve permanecer desativada quando o projeto não precisar da integração.
+
+Esta capacidade funciona no runtime Python de referência. Não habilita a VM C nativa nem altera a portabilidade de programas que não chamam py_chamar.

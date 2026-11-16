@@ -248,6 +248,9 @@ export default function App() {
   );
   const [connection, setConnection] = useState<ConnectionState>("checking");
   const [health, setHealth] = useState<BridgeHealth | null>(null);
+  const [pythonInteropEnabled, setPythonInteropEnabled] = useState(
+    () => localStorage.getItem("gp-python-interop") === "true",
+  );
   const [busy, setBusy] = useState(false);
   const [output, setOutput] = useState(
     "O console está pronto. Conecte o GP Bridge para compilar ou executar o projeto.",
@@ -302,6 +305,10 @@ export default function App() {
     try {
       const result = await checkGpBridge(bridgeUrl.trim());
       setHealth(result);
+      if (!result.pythonInterop?.available) {
+        setPythonInteropEnabled(false);
+        localStorage.removeItem("gp-python-interop");
+      }
       setConnection(result.ok && result.projectApi ? "connected" : "disconnected");
       setLastAction(
         result.ok && result.projectApi
@@ -350,7 +357,12 @@ export default function App() {
       const result: BridgeResult =
         mode === "compile"
           ? await compileGpProject(bridgeUrl, project.entryFile, project.files)
-          : await runGpProject(bridgeUrl, project.entryFile, project.files);
+          : await runGpProject(
+              bridgeUrl,
+              project.entryFile,
+              project.files,
+              pythonInteropEnabled,
+            );
       const combined = [result.stdout, result.stderr].filter(Boolean).join("\n").trim();
       setOutput(
         combined ||
@@ -645,6 +657,35 @@ export default function App() {
             <p>O Programinha usa o GP Bridge local. Para compilar projetos com módulos, conecte a Bridge 0.2 ou superior.</p>
             <label htmlFor="bridge-url">Endereço do GP Bridge</label>
             <input id="bridge-url" value={bridgeUrl} onChange={(event) => setBridgeUrl(event.target.value)} placeholder={DEFAULT_BRIDGE} />
+            <div className="python-interop-setting">
+              <div className="python-interop-copy">
+                <strong>Execução híbrida Python + GP</strong>
+                <span>
+                  {health?.pythonInterop?.available
+                    ? "Permite chamadas à lista segura de funções Python. Limite de " +
+                      health.pythonInterop.maxCallsPerRun +
+                      " chamadas por execução."
+                    : "Conecte uma GP Bridge atualizada para habilitar esta opção."}
+                </span>
+              </div>
+              <label className="python-interop-toggle" htmlFor="python-interop">
+                <input
+                  id="python-interop"
+                  type="checkbox"
+                  checked={pythonInteropEnabled}
+                  disabled={!health?.pythonInterop?.available}
+                  onChange={(event) => {
+                    const enabled = event.target.checked;
+                    setPythonInteropEnabled(enabled);
+                    localStorage.setItem("gp-python-interop", String(enabled));
+                  }}
+                />
+                <span>{pythonInteropEnabled ? "Ativada" : "Desativada"}</span>
+              </label>
+            </div>
+            <p className="python-interop-note">
+              Desativada por padrão. Não habilita eval, importação livre de módulos, shell, arquivos ou rede.
+            </p>
             <div className="modal-actions"><button className="secondary-button" onClick={() => void refreshConnection()}><RefreshCw size={14} /> Testar agora</button><button className="primary-button" onClick={saveBridgeUrl}>Salvar conexão</button></div>
             <small>Endereço padrão: {DEFAULT_BRIDGE} · acesso somente local</small>
           </section>
