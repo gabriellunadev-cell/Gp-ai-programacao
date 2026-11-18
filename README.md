@@ -49,6 +49,24 @@ O endereço padrão é http://127.0.0.1:8765. Execute python3 gp_ide_server.py n
 
 Veja o contrato completo em docs/GP_BRIDGE_API.md e a implementação em gp_ide_server.py no repositório da linguagem.
 
+## Visão de produto: plataforma de criação com IA
+
+O GP Programinha evoluirá para uma plataforma de desenvolvimento assistido por IA, com experiência de workspace inspirada no fluxo da Rork, implementada com tecnologia e serviços próprios. O objetivo é permitir criar projetos por descrição em linguagem natural, planejar alterações, editar código, executar testes, acompanhar preview e gerar artefatos.
+
+Escopo aprovado:
+- Workspace com projetos, histórico, configurações e templates.
+- Agente de engenharia que planeja, altera arquivos por diff, executa verificações e apresenta logs.
+- Editor avançado, explorador, terminal isolado e integração Git.
+- Preview web em tempo real quando suportado pelo projeto.
+- Builds web, Android (APK/AAB) e iOS (ambiente macOS/Xcode e assinatura necessários).
+- Evolução posterior para desktop, servidores, APIs e publicação controlada.
+
+A primeira entrega ponta a ponta prioriza web. Android e iOS são plataformas-alvo, mas só serão anunciadas como suportadas após toolchains, workers e testes reais. Projetos poderão usar GP e outras tecnologias; GP será a linguagem própria prioritária, não uma restrição exclusiva.
+
+A arquitetura permanece separada: o repositório Linguagem-GP- contém compilador, runtime, VMs e biblioteca; este repositório contém a plataforma, IDE, agente e UX. GP Bridge/SDK conecta os dois por contratos versionados. Python pode acelerar ferramentas e integrações, sem substituir GP. Execução de código de usuário ocorrerá em workers isolados, nunca no processo principal do backend.
+
+Especificação, fases, segurança e critérios de aceitação: [Visão de produto e roadmap](docs/PRODUCT_VISION_RORK_PARITY.md).
+
 ## Próximas etapas
 
 1. Validar execução real da Bridge 0.2 no Termux/Android e adicionar CI automatizado.
