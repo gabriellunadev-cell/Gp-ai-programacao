@@ -3,6 +3,7 @@ import type { ChangeEvent, KeyboardEvent } from "react";
 import {
   Activity,
   AlertCircle,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   CirclePlay,
@@ -11,6 +12,8 @@ import {
   FileCode2,
   FileDown,
   FilePlus2,
+  Globe,
+  Monitor,
   Folder,
   FolderOpen,
   FolderPlus,
@@ -19,6 +22,8 @@ import {
   PlugZap,
   RefreshCw,
   Settings2,
+  Smartphone,
+  Sparkles,
   Star,
   TerminalSquare,
   Trash2,
@@ -48,6 +53,67 @@ type GPProject = {
 
 type ConnectionState = "checking" | "connected" | "disconnected";
 type OutputKind = "info" | "success" | "error";
+type ProjectTarget = "gp" | "web" | "android" | "ios";
+
+const PROJECT_TARGET_LABELS: Record<ProjectTarget, string> = {
+  gp: "Gabriel Programming",
+  web: "Aplicação web",
+  android: "Aplicativo Android",
+  ios: "Aplicativo iOS",
+};
+
+function toGpComments(value: string): string {
+  return value
+    .replace(/\r/g, "")
+    .split("\n")
+    .map((line) => "// " + line.replace(/\*\//g, "* /"))
+    .join("\n");
+}
+
+function createProjectFromBrief(name: string, idea: string, target: ProjectTarget): GPProject {
+  const cleanName = name.trim().slice(0, 64) || "Novo projeto";
+  const cleanIdea = idea.trim().slice(0, 2000);
+  const targetLabel = PROJECT_TARGET_LABELS[target];
+  const plan = [
+    "PLANO INICIAL DO PROJETO",
+    "Nome: " + cleanName,
+    "Plataforma-alvo: " + targetLabel,
+    "",
+    "BRIEFING",
+    cleanIdea,
+    "",
+    "ETAPAS SUGERIDAS",
+    "1. Confirmar público, problema e requisitos essenciais.",
+    "2. Definir telas, fluxos e estrutura de dados.",
+    "3. Implementar uma primeira entrega pequena e testável.",
+    "4. Executar testes, revisar acessibilidade e segurança.",
+    "5. Preparar build e publicação quando a plataforma estiver habilitada.",
+    "",
+    "ESTADO",
+    "Este arquivo registra o briefing e um plano inicial. Não representa um build nativo.",
+  ].join("\n");
+  const entrySource = [
+    toGpComments("Projeto: " + cleanName),
+    toGpComments("Plataforma-alvo: " + targetLabel),
+    toGpComments("Briefing: " + cleanIdea.replace(/\n/g, " ")),
+    "",
+    'mostrar("Projeto iniciado no Gabriel Programming")',
+    'mostrar(' + JSON.stringify("Nome: " + cleanName) + ')',
+    'mostrar(' + JSON.stringify("Plataforma-alvo: " + targetLabel) + ')',
+    'mostrar("Próximo passo: detalhar requisitos e implementar a primeira funcionalidade.")',
+    "",
+  ].join("\n");
+  return {
+    format: "gp-project",
+    version: 1,
+    name: cleanName,
+    entryFile: "app/principal.gp",
+    files: [
+      { path: "app/principal.gp", source: entrySource },
+      { path: "docs/plano.gp", source: toGpComments(plan) + "\n" },
+    ],
+  };
+}
 
 const starterProject: GPProject = {
   format: "gp-project",
@@ -258,6 +324,10 @@ export default function App() {
   const [outputKind, setOutputKind] = useState<OutputKind>("info");
   const [lastAction, setLastAction] = useState("Projeto aberto neste dispositivo");
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [builderName, setBuilderName] = useState("");
+  const [builderIdea, setBuilderIdea] = useState("");
+  const [builderTarget, setBuilderTarget] = useState<ProjectTarget>("gp");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<"editor" | "output">("editor");
   const importInput = useRef<HTMLInputElement>(null);
@@ -439,19 +509,24 @@ export default function App() {
   }
 
   function newProject(): void {
-    const name = window.prompt("Nome do novo projeto:", "Novo projeto");
-    if (!name?.trim()) return;
-    const next: GPProject = {
-      format: "gp-project",
-      version: 1,
-      name: name.trim(),
-      entryFile: "principal.gp",
-      files: [{ path: "principal.gp", source: 'mostrar("Olá, GP!")\n' }],
-    };
+    setBuilderName("");
+    setBuilderIdea("");
+    setBuilderTarget("gp");
+    setBuilderOpen(true);
+  }
+
+  function createProjectFromPrompt(): void {
+    const idea = builderIdea.trim();
+    if (idea.length < 12) {
+      window.alert("Descreva a ideia com pelo menos 12 caracteres para preparar o projeto.");
+      return;
+    }
+    const next = createProjectFromBrief(builderName, idea, builderTarget);
     setProject(next);
     setActivePath(next.entryFile);
     setActiveTab("editor");
-    setLastAction("Novo projeto criado");
+    setBuilderOpen(false);
+    setLastAction("Estrutura inicial criada a partir do briefing · " + PROJECT_TARGET_LABELS[builderTarget]);
   }
 
   function exportProject(): void {
@@ -547,6 +622,7 @@ export default function App() {
           <button className="icon-button" aria-label="Configurações do Bridge" title="Configurar GP Bridge" onClick={() => setSettingsOpen(true)}>
             <Settings2 size={18} />
           </button>
+          <button className="primary-button header-create-button" onClick={newProject}><Sparkles size={14} /> Criar projeto</button>
           <a className="github-link" href="https://github.com/gabriellunadev-cell/Gp-ai-programacao" target="_blank" rel="noreferrer">GitHub</a>
         </div>
       </header>
@@ -650,6 +726,50 @@ export default function App() {
         </main>
       </div>
 
+      {builderOpen && (
+        <div className="modal-backdrop builder-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBuilderOpen(false); }}>
+          <section className="builder-modal" role="dialog" aria-modal="true" aria-labelledby="builder-title">
+            <div className="modal-heading">
+              <div>
+                <span className="eyebrow">NOVO PROJETO · GP BUILDER</span>
+                <h2 id="builder-title">O que vamos construir?</h2>
+                <p>Comece com uma ideia. O Programinha prepara um projeto GP e registra o briefing para orientar a implementação.</p>
+              </div>
+              <button className="icon-button" aria-label="Fechar criador" onClick={() => setBuilderOpen(false)}><X size={18} /></button>
+            </div>
+            <div className="builder-grid">
+              <div className="builder-form">
+                <label htmlFor="builder-name">Nome do projeto</label>
+                <input id="builder-name" value={builderName} maxLength={64} onChange={(event) => setBuilderName(event.target.value)} placeholder="Ex.: Meu aplicativo de tarefas" />
+                <label htmlFor="builder-idea">Descreva seu aplicativo ou sistema</label>
+                <textarea id="builder-idea" rows={6} maxLength={2000} value={builderIdea} onChange={(event) => setBuilderIdea(event.target.value)} placeholder="Quero criar um aplicativo para organizar tarefas, com cadastro de usuários, calendário, notificações e um painel simples..." />
+                <div className="builder-counter">{builderIdea.length}/2000 caracteres</div>
+                <span className="builder-label">PLATAFORMA-ALVO</span>
+                <div className="target-options">
+                  <button type="button" className={builderTarget === "gp" ? "target-option selected" : "target-option"} onClick={() => setBuilderTarget("gp")}><Code2 size={17} /><span>GP</span><small>Projeto GP</small></button>
+                  <button type="button" className={builderTarget === "web" ? "target-option selected" : "target-option"} onClick={() => setBuilderTarget("web")}><Globe size={17} /><span>Web</span><small>Planejamento</small></button>
+                  <button type="button" className={builderTarget === "android" ? "target-option selected" : "target-option"} onClick={() => setBuilderTarget("android")}><Smartphone size={17} /><span>Android</span><small>Planejamento</small></button>
+                  <button type="button" className={builderTarget === "ios" ? "target-option selected" : "target-option"} onClick={() => setBuilderTarget("ios")}><Monitor size={17} /><span>iOS</span><small>Planejamento</small></button>
+                </div>
+                <div className="builder-disclaimer"><AlertCircle size={15} /><span>Nesta etapa, o briefing e a estrutura GP são preparados localmente. A geração por modelo de IA, o preview web e os builds Android/iOS serão conectados em fases próprias; ainda não há build nativo nesta ação.</span></div>
+                <div className="builder-actions">
+                  <button className="secondary-button" onClick={() => setBuilderOpen(false)}>Cancelar</button>
+                  <button className="primary-button" disabled={builderIdea.trim().length < 12} onClick={createProjectFromPrompt}>Criar estrutura <ArrowRight size={15} /></button>
+                </div>
+              </div>
+              <aside className="builder-preview">
+                <div className="preview-kicker"><Sparkles size={15} /> PLANO INICIAL</div>
+                <h3>{builderName.trim() || "Seu novo projeto"}</h3>
+                <p>{builderIdea.trim() || "O briefing aparecerá aqui enquanto você descreve sua ideia."}</p>
+                <div className="preview-step"><span>01</span><div><strong>Entender requisitos</strong><small>Objetivo, público e necessidades</small></div></div>
+                <div className="preview-step"><span>02</span><div><strong>Desenhar a solução</strong><small>Telas, fluxos e dados</small></div></div>
+                <div className="preview-step"><span>03</span><div><strong>Implementar e validar</strong><small>Primeira entrega testável</small></div></div>
+                <div className="preview-target">Destino: <strong>{PROJECT_TARGET_LABELS[builderTarget]}</strong></div>
+              </aside>
+            </div>
+          </section>
+        </div>
+      )}
       {settingsOpen && (
         <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setSettingsOpen(false); }}>
           <section className="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">

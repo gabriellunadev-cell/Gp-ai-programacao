@@ -11,6 +11,10 @@ IDE visual e ambiente de projetos da linguagem Gabriel Programming (GP), desenvo
 
 O Programinha não contém uma cópia do compilador.
 
+## Criador de projetos por briefing — primeira etapa
+
+A interface inclui um fluxo inicial para registrar a ideia, escolher a plataforma-alvo e criar uma estrutura GP com arquivo principal e plano comentado. A geração desta etapa é local e baseada em estrutura/template; ela não chama um modelo de IA e não gera APK/IPA nem preview web. Os alvos Web, Android e iOS são registrados como intenção do projeto enquanto os respectivos geradores e pipelines são implementados. A interface informa essas limitações antes da criação.
+
 ## Recursos do ciclo 0.2
 
 - Projetos GP com múltiplos arquivos e caminhos relativos.
