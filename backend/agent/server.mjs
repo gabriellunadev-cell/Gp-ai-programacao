@@ -133,7 +133,15 @@ export function createAgentServer({ env = process.env, fetchImpl = fetch, clock 
 
     const now = clock();
     const key = req.socket.remoteAddress ?? "unknown";
-    const bucket = buckets.get(key) ?? { start: now, count: 0 };
+    let bucket = buckets.get(key);
+    if (!bucket && buckets.size >= 2000) {
+      for (const [k, v] of buckets) if (now - v.start >= WINDOW_MS) buckets.delete(k);
+      if (buckets.size >= 2000) {
+        send(res, 503, { ok: false, error: "Capacidade temporariamente limitada; tente novamente." }, cors);
+        return;
+      }
+    }
+    bucket ??= { start: now, count: 0 };
     if (now - bucket.start >= WINDOW_MS) { bucket.start = now; bucket.count = 0; }
     bucket.count += 1;
     buckets.set(key, bucket);
@@ -141,7 +149,11 @@ export function createAgentServer({ env = process.env, fetchImpl = fetch, clock 
       send(res, 429, { ok: false, error: "Limite de 12 solicitações por minuto atingido." }, cors);
       return;
     }
-    if (buckets.size > 2000) for (const [k, v] of buckets) if (now - v.start >= WINDOW_MS) buckets.delete(k);
+
+    if (!/^application\/json(?:\s*;|$)/i.test(req.headers["content-type"] ?? "")) {
+      send(res, 415, { ok: false, error: "Use Content-Type: application/json." }, cors);
+      return;
+    }
 
     let input;
     try { input = await bodyJson(req); }
@@ -160,7 +172,8 @@ export function createAgentServer({ env = process.env, fetchImpl = fetch, clock 
     let endpoint;
     try {
       endpoint = new URL(base);
-      if (endpoint.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(endpoint.hostname)) throw new Error("invalid");
+      if ((endpoint.protocol !== "https:" && !["localhost", "127.0.0.1"].includes(endpoint.hostname))
+        || endpoint.username || endpoint.password || endpoint.search || endpoint.hash) throw new Error("invalid");
     } catch {
       send(res, 500, { ok: false, error: "AI_BASE_URL inválida; use HTTPS ou localhost." }, cors);
       return;

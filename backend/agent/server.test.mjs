@@ -111,3 +111,90 @@ test("unsafe paths returned by provider are removed", async () => {
     assert.equal(data.plan.files.length, 0);
   });
 });
+
+test("JSON content type is required before parsing a plan", async () => {
+  await withServer({ env: { AGENT_API_TOKEN: "test-secret" } }, async (base) => {
+    const r = await fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { authorization: "Bearer test-secret", "content-type": "text/plain" },
+      body: JSON.stringify({ prompt: "Quero organizar tarefas pessoais." }),
+    });
+    assert.equal(r.status, 415);
+  });
+});
+
+test("the thirteenth request in one minute is rate limited", async () => {
+  await withServer({ env: { AGENT_API_TOKEN: "test-secret" } }, async (base) => {
+    const sendPlan = () => fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { authorization: "Bearer test-secret", "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "Quero organizar tarefas pessoais." }),
+    });
+    const results = [];
+    for (let i = 0; i < 13; i += 1) results.push(await sendPlan());
+    assert.equal(results.slice(0, 12).every((r) => r.status === 503), true);
+    assert.equal(results[12].status, 429);
+  });
+});
+
+test("provider HTTP errors are normalized and never reveal credentials", async () => {
+  await withServer({
+    env: { AGENT_API_TOKEN: "test-secret", AI_API_KEY: "provider-secret", AI_MODEL: "mock-model" },
+    fetchImpl: async () => new Response("private provider detail", { status: 429 }),
+  }, async (base) => {
+    const r = await fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { authorization: "Bearer test-secret", "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "Quero organizar tarefas pessoais." }),
+    });
+    const body = await r.text();
+    assert.equal(r.status, 502);
+    assert.equal(body.includes("provider-secret"), false);
+    assert.equal(body.includes("private provider detail"), false);
+  });
+});
+
+test("provider connection failures return a safe error", async () => {
+  await withServer({
+    env: { AGENT_API_TOKEN: "test-secret", AI_API_KEY: "provider-secret", AI_MODEL: "mock-model" },
+    fetchImpl: async () => { throw new Error("secret transport details"); },
+  }, async (base) => {
+    const r = await fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { authorization: "Bearer test-secret", "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "Quero organizar tarefas pessoais." }),
+    });
+    const body = await r.text();
+    assert.equal(r.status, 502);
+    assert.equal(body.includes("secret transport details"), false);
+    assert.equal(body.includes("provider-secret"), false);
+  });
+});
+
+test("malformed provider output cannot create a partial plan", async () => {
+  await withServer({
+    env: { AGENT_API_TOKEN: "test-secret", AI_API_KEY: "provider-secret", AI_MODEL: "mock-model" },
+    fetchImpl: async () => new Response(JSON.stringify({ choices: [{ message: { content: "not-json" } }] }), { status: 200 }),
+  }, async (base) => {
+    const r = await fetch(base + "/api/agent/plan", {
+      method: "POST",
+      headers: { authorization: "Bearer test-secret", "content-type": "application/json" },
+      body: JSON.stringify({ prompt: "Quero organizar tarefas pessoais." }),
+    });
+    const data = await r.json();
+    assert.equal(r.status, 502);
+    assert.equal(data.ok, false);
+    assert.match(data.error, /Resposta inválida/);
+  });
+});
+
+test("allowed CORS preflight returns only the configured origin", async () => {
+  await withServer({ env: { AGENT_ALLOWED_ORIGINS: "https://app.example" } }, async (base) => {
+    const r = await fetch(base + "/api/agent/plan", {
+      method: "OPTIONS",
+      headers: { origin: "https://app.example", "access-control-request-method": "POST" },
+    });
+    assert.equal(r.status, 204);
+    assert.equal(r.headers.get("access-control-allow-origin"), "https://app.example");
+  });
+});
