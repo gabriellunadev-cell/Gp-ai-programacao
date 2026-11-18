@@ -53,6 +53,8 @@ O endereço padrão é http://127.0.0.1:8765. Execute python3 gp_ide_server.py n
 
 Veja o contrato completo em docs/GP_BRIDGE_API.md e a implementação em gp_ide_server.py no repositório da linguagem.
 
+O serviço de planejamento do agente está documentado em [GP Agent Planner API](docs/GP_AGENT_API.md). Ele é executado separadamente, mantém as chaves no backend e, nesta etapa, somente produz planos estruturados — não executa código nem modifica arquivos.
+
 ## Visão de produto: plataforma de criação com IA
 
 O GP Programinha evoluirá para uma plataforma de desenvolvimento assistido por IA, com experiência de workspace inspirada no fluxo da Rork, implementada com tecnologia e serviços próprios. O objetivo é permitir criar projetos por descrição em linguagem natural, planejar alterações, editar código, executar testes, acompanhar preview e gerar artefatos.
