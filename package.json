@@ -9,7 +9,10 @@
     "preview": "vite preview --host 0.0.0.0",
     "typecheck": "tsc -b --pretty",
     "agent:dev": "node backend/agent/server.mjs",
-    "test:agent": "node --test backend/agent/server.test.mjs"
+    "test:agent": "node --test backend/agent/server.test.mjs",
+    "projects:dev": "node backend/projects/server.mjs",
+    "test:projects": "node --test backend/projects/server.test.mjs",
+    "test": "npm run test:agent && npm run test:projects"
   },
   "dependencies": {
     "lucide-react": "^0.468.0",

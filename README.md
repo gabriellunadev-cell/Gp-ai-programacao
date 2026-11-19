@@ -47,6 +47,12 @@ npm run build
 
 Formato de projeto e regras de importação: [GP Project Format v1](docs/GP_PROJECT_FORMAT.md).
 
+## API de projetos na nuvem — primeira base
+
+O backend backend/projects implementa uma API de projetos por usuário, autenticando cada access token por meio do Supabase Auth e armazenando dados em diretórios privados no servidor. O contrato está em docs/GP_PROJECTS_API.md.
+
+Esta entrega é a fundação do armazenamento multiusuário: a interface ainda não consome a API e o serviço não está publicado. O armazenamento inicial é single-node no filesystem e deve migrar para Postgres com RLS antes de escalar horizontalmente.
+
 ## GP Bridge
 
 O endereço padrão é http://127.0.0.1:8765. Execute python3 gp_ide_server.py na raiz do repositório da linguagem GP. A interface requer projectApi: true no health check, disponível na Bridge 0.2.
